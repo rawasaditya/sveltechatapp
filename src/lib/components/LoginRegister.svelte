@@ -12,11 +12,17 @@
         headers: {
           "content-type": "application/json",
         },
-      }).then((res) => {
-        if (res.ok) {
-          window.location.reload();
-        }
-      });
+      })
+        .then((res) => {
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            throw res;
+          }
+        })
+        .catch(async (err) => {
+          alert((await err.json()).message);
+        });
     } else {
       alert("Please enter valid data");
     }

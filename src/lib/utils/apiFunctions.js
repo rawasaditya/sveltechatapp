@@ -1,5 +1,5 @@
 import { db } from "../database/db";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt from 'jsonwebtoken'
 
 // Exclude keys from user
@@ -19,7 +19,8 @@ const registerUser = async (email, password, firstName, lastName) => {
     if (user) {
         throw "User Already exists";
     }
-    const hash = bcrypt.hashSync(password, 10);
+    const salt = bcrypt.genSaltSync(10);
+    const hash = bcrypt.hashSync(password, salt);
     const newUser = await db.user.create({
         data: {
             email,
@@ -56,7 +57,7 @@ const getUserFromToken = async (token) => {
 
 const validateUser = async (email, password) => {
     const user = await getUserFromEmail(email)
-    return await bcrypt.compare(password, user.password)
+    return bcrypt.compareSync(password, user.password);
 }
 
 
@@ -73,11 +74,68 @@ const generateSignToken = async (email) => {
 }
 
 
+const searchAllUsers = async (searchString, user) => {
+    try {
+        let users = await db.user.findMany({
+            where: {
+                OR: [
+                    {
+                        email: {
+                            contains: searchString
+                        }
+                    },
+                    {
+                        firstName: {
+                            contains: searchString
+                        }
+                    },
+                    {
+                        lastName: {
+                            contains: searchString
+                        }
+                    }
+                ]
+            },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                picture: true,
+                requestsReceived: {
+                    select: { id: true }
+                },
+                requestedTo: {
+                    select: { id: true }
+                },
+                friends: {
+                    select: { id: true }
+                }
+            }
+        })
+        users = users.map(i => {
+            const details = {
+                id: i.id,
+                firstName: i.firstName,
+                picture: i.picture,
+                requestsReceived: i.requestsReceived.includes(user),
+                requestedTo: i.requestedTo.includes(user),
+                friends: i.friends.includes(user),
+            }
+            return details
+        })
+        return users;
+
+    } catch (err) {
+        console.log(err)
+    }
+}
+
 
 export {
     registerUser,
     getUserFromEmail,
     validateUser,
     generateSignToken,
-    getUserFromToken
+    getUserFromToken,
+    searchAllUsers
 }

@@ -2,5 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 body {
-  background-color: #f8f8f8;
+  background-color: #533d8f;
+  height: 100vh;
 }
