@@ -1,6 +1,8 @@
 import { db } from "../database/db";
 import bcrypt from "bcryptjs";
 import jwt from 'jsonwebtoken'
+import io from 'socket.io-client';
+const socket = io('http://localhost:3000');
 
 // Exclude keys from user
 function exclude(object, keys) {
@@ -27,14 +29,14 @@ const registerUser = async (email, password, firstName, lastName) => {
             password: hash,
             firstName,
             lastName,
-            token: ""
+            token: "",
+
         }
     })
 
     return newUser
 
 }
-
 
 const getUserFromEmail = async (email) => {
     const user = await db.user.findUnique({ where: { email }, })
@@ -44,7 +46,6 @@ const getUserFromEmail = async (email) => {
         throw "User Does not exist"
     }
 }
-
 
 const getUserFromToken = async (token) => {
     const user = await db.user.findMany({ where: { token }, })
@@ -60,7 +61,6 @@ const validateUser = async (email, password) => {
     return bcrypt.compareSync(password, user.password);
 }
 
-
 const generateSignToken = async (email) => {
     const user = await getUserFromEmail(email);
     const token = jwt.sign({
@@ -73,8 +73,8 @@ const generateSignToken = async (email) => {
     return token
 }
 
-
-const searchAllUsers = async (searchString, user) => {
+const searchAllUsers = async (searchString, locals) => {
+    const user = locals.user.id
     try {
         let users = await db.user.findMany({
             where: {
@@ -95,31 +95,17 @@ const searchAllUsers = async (searchString, user) => {
                         }
                     }
                 ]
-            },
-            select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                picture: true,
-                requestsReceived: {
-                    select: { id: true }
-                },
-                requestedTo: {
-                    select: { id: true }
-                },
-                friends: {
-                    select: { id: true }
-                }
             }
         })
         users = users.map(i => {
             const details = {
                 id: i.id,
                 firstName: i.firstName,
+                lastName: i.lastName,
                 picture: i.picture,
-                requestsReceived: i.requestsReceived.includes(user),
-                requestedTo: i.requestedTo.includes(user),
-                friends: i.friends.includes(user),
+                requestSentTo: i?.requestReceived?.includes(user),
+                friends: i?.friends?.includes(user),
+                requestReceived: locals?.user?.requestReceived?.includes(i?.id) || false
             }
             return details
         })
@@ -130,6 +116,88 @@ const searchAllUsers = async (searchString, user) => {
     }
 }
 
+const sendRequest = async (send, locals) => {
+    const id = locals.user.id
+
+    await db.user.update({
+        where: { id: send },
+        data: {
+            requestReceived: {
+                push: id
+            }
+        }
+    })
+
+    await db.notification.create({
+        data: {
+            message: "Request Received",
+            from: id,
+            fromFirstName: locals.user.firstName || "",
+            fromLastName: locals.user.lastName || "",
+            notifyTo: {
+                connect: {
+                    id: send
+                }
+            }
+        }
+    })
+    socket.emit("notification", {
+        to: send,
+        notificationId: "requestSent",
+    });
+
+    return { "success": "success" }
+}
+
+const acceptRequest = async (id, locals, accept) => {
+    const idx = locals.user.requestReceived.indexOf(id)
+    const newArr = locals.user.requestReceived.splice(idx, 1)
+    let user = {};
+    if (accept) {
+        await db.user.update({
+            where: {
+                id: id
+            },
+            data: {
+                friends: {
+                    push: locals.user.id
+                }
+            }
+        })
+
+        user = await db.user.updateMany({
+            where: {
+                id: locals.user.id
+            },
+            data: {
+                requestReceived: locals.user.requestReceived,
+                friends: {
+                    push: id
+                }
+            }
+        })
+    } else {
+        user = await db.user.updateMany({
+            where: {
+                id: locals.user.id
+            },
+            data: {
+                requestReceived: locals.user.requestReceived
+            }
+        })
+    }
+}
+
+
+const getNotifications = async (id) => {
+    const notifications = await db.notification.findMany({
+        where: {
+            notifyToId: id
+        }
+    })
+    return notifications
+}
+
 
 export {
     registerUser,
@@ -137,5 +205,8 @@ export {
     validateUser,
     generateSignToken,
     getUserFromToken,
-    searchAllUsers
+    searchAllUsers,
+    sendRequest,
+    acceptRequest,
+    getNotifications
 }

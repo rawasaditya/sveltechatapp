@@ -2,7 +2,14 @@
   import Header from "./Header.svelte";
   import Icon from "@iconify/svelte";
   import UsersPills from "./UsersPills.svelte";
+  import io from "socket.io-client";
+  import { page } from "$app/stores";
+  import { onMount } from "svelte";
+  import NotificationLists from "./NotificationLists.svelte";
+
   let users = [];
+  let notifications = [];
+  let showNotification = false;
   let searchFunction = async (e) => {
     if (e.target.value.trim().length !== 0) {
       const searchString = e.target.value;
@@ -37,11 +44,44 @@
       searchFunction(e);
     }, 750);
   };
+
+  const socket = io("http://localhost:3000", {
+    rejectUnauthorized: false,
+  });
+
+  const getNotifications = () => {
+    fetch("/api/getNotifications", {
+      method: "POST",
+      body: JSON.stringify({ id: $page.data.user.id }),
+      headers: {
+        "content-type": "application/json",
+      },
+    })
+      .then((res) => {
+        return res.json();
+      })
+      .then((res) => {
+        notifications = res;
+      });
+  };
+
+  onMount(() => {
+    getNotifications();
+  });
+
+  socket.emit("connected", $page.data.user.id);
+
+  socket.on("disconnect", () => {
+    console.log("disconnected from server");
+  });
+  socket.on("notificationReceived", (msg) => {
+    getNotifications();
+  });
 </script>
 
 <div class="bg-[#271c46] h-full ">
   <div class="shadow-lg pb-1 mb-2">
-    <Header />
+    <Header notificationsCount={notifications.length} bind:showNotification />
     <div
       class="flex items-center border border-[#3a315a]  mx-4 px-4 py-2 mb-2 "
     >
@@ -57,15 +97,24 @@
       />
     </div>
   </div>
-  <div>
-    {#each users as user}
-      <UsersPills
-        firstName={user.firstName}
-        lastName={user.lastName}
-        id={user.id}
-        picture={user.picture}
-      />
-      {JSON.stringify(user.requestsReceived)}
-    {/each}
-  </div>
+  {#if !showNotification}
+    <div>
+      {#each users as user}
+        <UsersPills
+          firstName={user.firstName}
+          lastName={user.lastName}
+          id={user.id}
+          picture={user.picture}
+          requestSentTo={user.requestSentTo}
+          requestReceived={user.requestReceived}
+          friends={user.friends}
+          {socket}
+        />
+      {/each}
+    </div>
+  {:else}
+    <div>
+      <NotificationLists {notifications} />
+    </div>
+  {/if}
 </div>

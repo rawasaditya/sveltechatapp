@@ -6,41 +6,31 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 
 }
 
 model User{
-  id Int @id @default(autoincrement())
+  id String @id @default(auto()) @map("_id") @db.ObjectId
   email String @unique
   firstName String 
   lastName String
   picture String @default("https://avataaars.io/?")
   password String
   token String
-  requestsReceived RequestsReceived[]
-  requestedTo RequestedTo[] 
-  friends Friends[]
-}
-
-model RequestsReceived{
-  id Int @id @default(autoincrement())
-  requestID Int?
-  requestedBy User? @relation(fields:[requestID], references: [id])
-}
-model RequestedTo{
-  id Int @id @default(autoincrement())
-  requestID Int?
-  requestedBy User? @relation(fields:[requestID], references: [id])
+  requestReceived String[]
+  friends String[]
+  nofitication Notification[]
 }
 
 
-model Friends{
-    id Int @id @default(autoincrement())
-  userID Int?
-  Users User? @relation(fields:[userID], references: [id])
+model Notification{
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  notifyTo   User   @relation(fields: [notifyToId], references: [id])
+  notifyToId String @db.ObjectId
+  message String
+  from String
+  fromFirstName String
+fromLastName String
 }
-
-
-
