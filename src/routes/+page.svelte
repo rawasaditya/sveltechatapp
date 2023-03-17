@@ -5,10 +5,10 @@
 
 <div class="card bg-base-100 shadow-lg rounded-none h-full w-full">
   <div class="w-full grid grid-cols-12 h-full">
-    <div class="col-span-3">
+    <div class="col-span-4">
       <LeftContainer />
     </div>
-    <div class="col-span-9">
+    <div class="col-span-8">
       <RightContainer />
     </div>
   </div>

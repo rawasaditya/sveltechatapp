@@ -98,6 +98,7 @@
     </div>
   </div>
   {#if !showNotification}
+    <h1 class="text-center text-slate-400 font-bold mb-3">Friends</h1>
     <div>
       {#each users as user}
         <UsersPills
@@ -114,6 +115,7 @@
     </div>
   {:else}
     <div>
+      <h1 class="text-center text-slate-400 font-bold mb-3">Notifications</h1>
       <NotificationLists {notifications} />
     </div>
   {/if}

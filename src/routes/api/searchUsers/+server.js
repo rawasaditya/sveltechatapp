@@ -11,5 +11,3 @@ export async function POST({ request, locals }) {
 
     }
 }
-
-// DATABASE_URL="mongodb+srv://hydra:cSK0iFTdfuS8LoFI@cluster0.vpkeb.mongodb.net/svelteChat?ssl=true&connectTimeoutMS=5000"
