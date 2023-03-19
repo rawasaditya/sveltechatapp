@@ -2,10 +2,10 @@
   import Header from "./Header.svelte";
   import Icon from "@iconify/svelte";
   import UsersPills from "./UsersPills.svelte";
-  import io from "socket.io-client";
   import { page } from "$app/stores";
   import { onMount } from "svelte";
   import NotificationLists from "./NotificationLists.svelte";
+  export let socket;
 
   let users = [];
   let notifications = [];
@@ -45,10 +45,6 @@
     }, 750);
   };
 
-  const socket = io("http://localhost:3000", {
-    rejectUnauthorized: false,
-  });
-
   const getNotifications = () => {
     fetch("/api/getNotifications", {
       method: "POST",
@@ -58,22 +54,40 @@
       },
     })
       .then((res) => {
+        if(!res.ok) throw res.json()
         return res.json();
       })
       .then((res) => {
         notifications = res;
+      }).catch(err=>{
+        notifications = []
+      })
+  };
+
+  const getAllFriends = () => {
+    fetch("/api/getAllFriends")
+      .then((res) => {
+        if (!res.ok) {
+          throw res.json();
+        }
+        return res.json();
+      })
+      .then((res) => {
+        users = res;
+      })
+      .catch((err) => {
+        console.log(err);
       });
   };
 
   onMount(() => {
     getNotifications();
+    getAllFriends();
   });
 
   socket.emit("connected", $page.data.user.id);
 
-  socket.on("disconnect", () => {
-    console.log("disconnected from server");
-  });
+
   socket.on("notificationReceived", (msg) => {
     getNotifications();
   });
@@ -110,6 +124,7 @@
           requestReceived={user.requestReceived}
           friends={user.friends}
           {socket}
+          from={$page.data.user.id}
         />
       {/each}
     </div>

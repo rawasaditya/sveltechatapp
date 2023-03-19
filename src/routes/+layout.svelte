@@ -6,7 +6,7 @@
 </script>
 
 {#if $page.data.user}
-  <div class="mx-auto w-11/12 py-10 h-full">
+  <div class="mx-auto w-11/12 py-10 h-screen">
     <slot />
   </div>
 {:else}

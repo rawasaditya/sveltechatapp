@@ -21,22 +21,32 @@ let notifications = {
 io.on('connection', (socket) => {
     socket.on("connected", function (userId) {
         users[userId.toString()] = socket.id;
-        console.log(users)
     });
 
 
 
-    socket.on('message', (msg) => {
-        console.log(`message: ${msg}`);
-        io.to(socket.id).emit('message', msg);
-    });
 
 
     socket.on('notification', (msg) => {
+
         if (users[msg.to]) {
             socket.to(users[msg.to]).emit("notificationReceived", notifications[msg.notificationId])
         }
     })
+
+    socket.on('sent', msg => {
+        if (users[msg.to]) {
+            const data = {
+                message: msg.message,
+                chatId: msg.chatId
+            }
+            console.log(data)
+            socket.to(users[msg.to]).emit("receive", data)
+        }
+    })
+
+
+
 
 
     socket.on('disconnect', () => {

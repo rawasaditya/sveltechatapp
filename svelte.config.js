@@ -7,9 +7,10 @@ const config = {
 	kit: {
 		adapter: adapter(),
 		alias: {
-			$lib: path.resolve("./src/lib"),
-			$components: path.resolve("./src/lib/components"),
-			$utils: path.resolve("./src/lib/utils"),
+			"$lib": path.resolve("./src/lib"),
+			"$components": path.resolve("./src/lib/components"),
+			"$utils": path.resolve("./src/lib/utils"),
+			"$img": path.resolve("./src/lib/images"),
 		}
 	},
 	preprocess: vitePreprocess()

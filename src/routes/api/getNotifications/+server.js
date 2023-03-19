@@ -6,6 +6,7 @@ export async function POST({ request }) {
         const notifications = await getNotifications(id);
         return json(notifications)
     } catch (err) {
+        console.log(err)
         throw error(500, err)
     }
 }

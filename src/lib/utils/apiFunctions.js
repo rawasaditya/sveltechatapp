@@ -127,10 +127,9 @@ const sendRequest = async (send, locals) => {
             }
         }
     })
-
     await db.notification.create({
         data: {
-            message: "Request Received",
+            message: `Request Received ${locals.user.firstName || ""} ${locals.user.lastName || ""}`,
             from: id,
             fromFirstName: locals.user.firstName || "",
             fromLastName: locals.user.lastName || "",
@@ -176,6 +175,14 @@ const acceptRequest = async (id, locals, accept) => {
                 }
             }
         })
+
+        await db.chatRoom.create({
+            data: {
+                people: [id, locals.user.id]
+            }
+        })
+
+
     } else {
         user = await db.user.updateMany({
             where: {
@@ -186,8 +193,9 @@ const acceptRequest = async (id, locals, accept) => {
             }
         })
     }
-}
 
+    return accept;
+}
 
 const getNotifications = async (id) => {
     const notifications = await db.notification.findMany({
@@ -197,6 +205,118 @@ const getNotifications = async (id) => {
     })
     return notifications
 }
+
+const generateNotification = async (id, locals) => {
+    await db.notification.create({
+        data: {
+            message: `Request accepted ${locals.user.firstName || ""} ${locals.user.lastName || ""}`,
+            from: locals.user.id,
+            fromFirstName: locals.user.firstName || "",
+            fromLastName: locals.user.lastName || "",
+            notifyTo: {
+                connect: {
+                    id: id
+                }
+            }
+        }
+    })
+
+    await socket.emit("notification", {
+        to: id,
+        notificationId: "requestSent",
+    });
+    await socket.emit("notification", {
+        to: locals.user.id,
+        notificationId: "requestSent",
+    });
+
+}
+
+const deleteNotification = async (id) => {
+    return await db.notification.deleteMany({
+        where: {
+            id
+        }
+    })
+}
+
+
+const searchAllFriends = async (locals) => {
+    const user = locals.user.id
+    try {
+        let currentUser = await db.user.findUnique({
+            where: {
+                id: user
+            }
+        })
+
+        let friends = await db.user.findMany({
+            where: {
+                id: {
+                    in: currentUser.friends
+                }
+            }
+        })
+        let users = friends.map(i => {
+            const details = {
+                id: i.id,
+                firstName: i.firstName,
+                lastName: i.lastName,
+                picture: i.picture,
+                requestSentTo: i?.requestReceived?.includes(user),
+                friends: i?.friends?.includes(user),
+                requestReceived: locals?.user?.requestReceived?.includes(i?.id) || false
+            }
+            return details
+        })
+        return users;
+
+    } catch (err) {
+        console.log(err)
+    }
+}
+
+const saveMessage = async (body) => {
+    const {
+        to,
+        from,
+        message,
+        chatId
+    } = body;
+    const chat = await db.messagesModel.create({
+        data: {
+            ChatRoom: {
+                connect: {
+                    id: chatId
+                }
+            },
+            to,
+            from,
+            message
+        }
+    })
+    return chat
+}
+
+const getChatRoomReady = async (id, from) => {
+    const chatDetails = await db.chatRoom.findMany({
+        where: {
+            AND: [
+                {
+                    people: {
+                        hasEvery: [id, from]
+                    }
+                },
+                {
+                    isPrivate: true
+                }
+            ]
+
+        }
+    })
+    return chatDetails
+}
+
 
 
 export {
@@ -208,5 +328,10 @@ export {
     searchAllUsers,
     sendRequest,
     acceptRequest,
-    getNotifications
+    getNotifications,
+    generateNotification,
+    deleteNotification,
+    searchAllFriends,
+    saveMessage,
+    getChatRoomReady
 }
